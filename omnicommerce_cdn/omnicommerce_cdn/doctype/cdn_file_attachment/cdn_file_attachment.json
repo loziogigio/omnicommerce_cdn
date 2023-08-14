@@ -1,0 +1,113 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2023-08-14 17:29:10.070726",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "general_configuration",
+  "delete_file_from_cloud",
+  "cdn_credentials",
+  "cdn_url",
+  "bucket_name",
+  "cdn_key",
+  "cdn_secret",
+  "column_break_afdu",
+  "region_name",
+  "folder_name",
+  "signed_url_expiry_time",
+  "section_break_720k",
+  "migrate_existing_files"
+ ],
+ "fields": [
+  {
+   "fieldname": "general_configuration",
+   "fieldtype": "Section Break",
+   "label": "General Configuration"
+  },
+  {
+   "default": "0",
+   "fieldname": "delete_file_from_cloud",
+   "fieldtype": "Check",
+   "label": "Delete file from cloud "
+  },
+  {
+   "fieldname": "cdn_credentials",
+   "fieldtype": "Section Break",
+   "label": "CDN credentials"
+  },
+  {
+   "fieldname": "cdn_key",
+   "fieldtype": "Data",
+   "label": "CDN Key"
+  },
+  {
+   "fieldname": "cdn_secret",
+   "fieldtype": "Data",
+   "label": "CDN Secret"
+  },
+  {
+   "fieldname": "column_break_afdu",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "region_name",
+   "fieldtype": "Data",
+   "label": "CDN Bucket Region Name"
+  },
+  {
+   "fieldname": "folder_name",
+   "fieldtype": "Data",
+   "label": "Folder Name"
+  },
+  {
+   "fieldname": "signed_url_expiry_time",
+   "fieldtype": "Int",
+   "label": "Signed URL expiry time"
+  },
+  {
+   "fieldname": "section_break_720k",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "migrate_existing_files",
+   "fieldtype": "Button",
+   "label": "Migrate Existing Files"
+  },
+  {
+   "fieldname": "cdn_url",
+   "fieldtype": "Data",
+   "label": "CDN Url"
+  },
+  {
+   "fieldname": "bucket_name",
+   "fieldtype": "Data",
+   "label": "Bucket Name"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2023-08-14 18:50:01.003977",
+ "modified_by": "Administrator",
+ "module": "Omnicommerce Cdn",
+ "name": "CDN File Attachment",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

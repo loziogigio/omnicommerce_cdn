@@ -176,6 +176,12 @@ app_license = "MIT"
 
 # Request Events
 # ----------------
+doc_events = {
+    "File": {
+        "after_insert": "omnicommerce_cdn.controller.file_upload_to_cdn",
+        "on_trash": "omnicommerce_cdn.controller.delete_from_cloud"
+    }
+}
 # before_request = ["omnicommerce_cdn.utils.before_request"]
 # after_request = ["omnicommerce_cdn.utils.after_request"]
 
@@ -183,6 +189,7 @@ app_license = "MIT"
 # ----------
 # before_job = ["omnicommerce_cdn.utils.before_job"]
 # after_job = ["omnicommerce_cdn.utils.after_job"]
+
 
 # User Data Protection
 # --------------------
