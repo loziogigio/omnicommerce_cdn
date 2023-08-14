@@ -1,5 +1,5 @@
 app_name = "omnicommerce_cdn"
-app_title = "Omnicommerce CDN file upload"
+app_title = "Omnicommerce Cdn"
 app_publisher = "Crowdechain S.r.o"
 app_description = "Enhances Frappe-based websites  by seamlessly integrating with content delivery networks (CDNs).  Upload a variety of files effortlessly, and watch as they\'re distributed globally for optimized loading."
 app_email = "developers@crowdechain.com"

@@ -1,1 +1,1 @@
-Omnicommerce CDN file upload
+Omnicommerce Cdn
