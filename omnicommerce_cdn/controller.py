@@ -93,28 +93,58 @@ class CDNOperations(object):
 
         if not doc_path:
             if self.folder_name:
-                final_key = self.folder_name + "/" + year + "/" + month + \
-                    "/" + day + "/" + parent_doctype + "/" + key + "_" + \
-                    file_name
+                final_key = self.folder_name + "/" + parent_doctype + "/" + parent_name + "/" + file_name
             else:
-                final_key = year + "/" + month + "/" + day + "/" + \
-                    parent_doctype + "/" + key + "_" + file_name
+                final_key = parent_doctype + "/" + parent_name + "/" + file_name
+
             return final_key
         else:
             final_key = doc_path + '/' + key + "_" + file_name
             return final_key
 
-    def upload_files_to_cdn_with_key(
-            self, file_path, file_name, is_private, parent_doctype, parent_name
-    ):
+
+    def upload_files_to_cdn_with_key(self, file_path, file_name, is_private, parent_doctype, parent_name):
         """
-        Uploads a new file to CDN.
-        Strips the file extension to set the content_type in metadata.
+        Uploads a new file and its resized versions to CDN.
         """
         mime_type, encoding = mimetypes.guess_type(file_name)
         if mime_type is None:
             mime_type = 'application/octet-stream'  # Default MIME type
+        
+        # Modify parent_doctype to be lowercase and replace spaces with underscores
+        parent_doctype = parent_doctype.lower().replace(' ', '_')
+
+        # Upload the original file
         key = self.key_generator(file_name, parent_doctype, parent_name)
+        self._upload_to_cdn(file_path, file_name, key, mime_type, is_private)
+
+        # Check if the file is an image and if the parent_doctype matches the conditions
+        if mime_type and mime_type.startswith('image/') and (parent_doctype == "website_slideshow" or parent_doctype == "website_item"):
+            # Upload resized versions
+            sizes = {
+                (200, 200): '_s',
+                (400, 400): '_m',
+                (1200, 1200): '_l'
+            }
+            
+            for size, suffix in sizes.items():
+                # Resize the image
+                resized_image = resize_image_square(file_path, size)
+                resized_file_path = os.path.join(os.path.dirname(file_path), f"{os.path.splitext(file_name)[0]}{suffix}{os.path.splitext(file_name)[1]}")
+                resized_image.save(resized_file_path)
+                
+                # Generate key for the resized image
+                resized_key = self.key_generator(f"{os.path.splitext(file_name)[0]}{suffix}{os.path.splitext(file_name)[1]}", parent_doctype, parent_name)
+
+                # Upload resized image
+                self._upload_to_cdn(resized_file_path, f"{os.path.splitext(file_name)[0]}{suffix}{os.path.splitext(file_name)[1]}", resized_key, mime_type, is_private)
+
+        return key
+
+    def _upload_to_cdn(self, file_path, file_name, key, mime_type, is_private):
+        """
+        Helper function to handle actual CDN upload.
+        """
         content_type = mime_type
         try:
             if is_private:
@@ -135,31 +165,35 @@ class CDNOperations(object):
                         "ContentType": content_type,
                         "ACL": 'public-read',
                         "Metadata": {
-                            "ContentType": content_type,
-
+                            "ContentType": content_type
                         }
                     }
                 )
 
         except boto3.exceptions.S3UploadFailedError:
             frappe.throw(frappe._("File Upload Failed. Please try again."))
-        return key
 
     def delete_from_cdn(self, key):
-        """Delete file from s3"""
-        self.cdn_settings_doc = frappe.get_doc(
-            'CDN File Attachment',
-            'CDN File Attachment',
-        )
+        """Delete file from CDN"""
+        self.cdn_settings_doc = frappe.get_doc('CDN File Attachment', 'CDN File Attachment')
 
         if self.cdn_settings_doc.delete_file_from_cloud:
+            # Delete the original file
             try:
-                self.CDN_CLIENT.delete_object(
-                    Bucket=self.cdn_settings_doc.bucket_name,
-                    Key=key
-                )
+                self.CDN_CLIENT.delete_object(Bucket=self.cdn_settings_doc.bucket_name, Key=key)
             except ClientError:
                 frappe.throw(frappe._("Access denied: Could not delete file"))
+
+            # If the file is an image, delete its resized versions too
+            mime_type, encoding = mimetypes.guess_type(key)
+            if mime_type and mime_type.startswith('image/'):
+                sizes = ['_s', '_m', '_l']
+                for suffix in sizes:
+                    resized_key = f"{os.path.splitext(key)[0]}{suffix}{os.path.splitext(key)[1]}"
+                    try:
+                        self.CDN_CLIENT.delete_object(Bucket=self.cdn_settings_doc.bucket_name, Key=resized_key)
+                    except ClientError:
+                        frappe.throw(frappe._("Access denied: Could not delete resized image file"))
 
 
     def read_file_from_cdn(self, key):
@@ -334,3 +368,82 @@ def ping():
     Test function to check if api function work.
     """
     return "pong"
+
+
+
+from PIL import Image
+
+def resize_image(input_path, max_size):
+    """
+    Resize the image to fit within the bounds of the specified size, maintaining the original aspect ratio.
+
+    Parameters:
+    - input_path: path to the original image.
+    - max_size: a tuple specifying the maximum width and height to resize to.
+    
+    Returns:
+    - Image object after resizing.
+    """
+    with Image.open(input_path) as img:
+        # Calculate the aspect ratio
+        aspect_ratio = img.width / img.height
+        new_width = max_size[0]
+        new_height = int(new_width / aspect_ratio)
+        
+        # If calculated height is more than max height, adjust the width instead
+        if new_height > max_size[1]:
+            new_height = max_size[1]
+            new_width = int(new_height * aspect_ratio)
+
+        img_resized = img.resize((new_width, new_height), Image.LANCZOS)
+        return img_resized
+    
+
+
+
+import os
+
+def resize_image_square(input_path, max_size, target_file_size=500*1024):
+    """
+    Resize the image to fit within a square of the specified size, maintaining the original aspect ratio.
+    
+    Parameters:
+    - input_path: path to the original image.
+    - max_size: a tuple specifying the maximum width and height for the square.
+    - target_file_size: the target file size in bytes. Default is 500 KB.
+    
+    Returns:
+    - Image object after resizing.
+    """
+    img = Image.open(input_path)
+    
+    # Calculate the aspect ratio
+    aspect_ratio = img.width / img.height
+    new_width = max_size[0]
+    new_height = int(new_width / aspect_ratio)
+    
+    # If calculated height is more than max height, adjust the width instead
+    if new_height > max_size[1]:
+        new_height = max_size[1]
+        new_width = int(new_height * aspect_ratio)
+    
+    img_resized = img.resize((new_width, new_height), Image.LANCZOS)
+    
+    # Create a square canvas of the specified size and paste the image into its center
+    square_image = Image.new("RGB", max_size, (255, 255, 255))  # White background
+    offset = ((max_size[0] - new_width) // 2, (max_size[1] - new_height) // 2)
+    square_image.paste(img_resized, offset)
+
+    # Estimate quality
+    original_size = os.path.getsize(input_path)
+    estimated_quality = int((target_file_size / original_size) * 100)
+    estimated_quality = min(95, max(10, estimated_quality))  # Clamp the value between 10 and 95
+
+    # Save to temporary path with the estimated quality
+    temp_path = "temp_image.jpg"
+    square_image.save(temp_path, "JPEG", quality=estimated_quality)
+
+    # Reopen the saved image and return
+    final_img = Image.open(temp_path)
+    return final_img
+
