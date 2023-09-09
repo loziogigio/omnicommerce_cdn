@@ -12,6 +12,8 @@ from botocore.client import Config
 from botocore.exceptions import ClientError
 
 import frappe
+from frappe import _
+
 
 
 import mimetypes
@@ -89,18 +91,26 @@ class CDNOperations(object):
         month = today.strftime("%m")
         day = today.strftime("%d")
 
+
         doc_path = None
 
-        if not doc_path:
-            if self.folder_name:
-                final_key = self.folder_name + "/" + parent_doctype + "/" + parent_name + "/" + file_name
-            else:
-                final_key = parent_doctype + "/" + parent_name + "/" + file_name
-
-            return final_key
-        else:
+        # Construct the final key
+        if doc_path:
             final_key = doc_path + '/' + key + "_" + file_name
-            return final_key
+        elif self.folder_name:
+            # Handle the case when parent_name is None
+            if parent_name:
+                final_key = f"{self.folder_name}/{parent_doctype}/{parent_name}/{file_name}"
+            else:
+                final_key = f"{self.folder_name}/{parent_doctype}/{year}/{month}/{day}"
+        else:
+            # Handle the case when parent_name is None
+            if parent_name:
+                final_key = f"{parent_doctype}/{parent_name}/{file_name}"
+            else:
+                final_key = f"{parent_doctype}/{year}/{month}/{day}/{file_name}"
+
+        return final_key
 
 
     def upload_files_to_cdn_with_key(self, file_path, file_name, is_private, parent_doctype, parent_name):
@@ -237,6 +247,12 @@ def file_upload_to_cdn(doc, method):
     """
     cdn_upload = CDNOperations()
     path = doc.file_url
+
+    if not path:  # Check if path is None or an empty string
+        return
+        
+
+    
     site_path = frappe.utils.get_site_path()
     parent_doctype = doc.attached_to_doctype or 'File'
     parent_name = doc.attached_to_name
@@ -253,7 +269,7 @@ def file_upload_to_cdn(doc, method):
         )
 
         if doc.is_private:
-            method = "frappe_cdn_attachment.controller.generate_file"
+            method = "omnicommerce_cdn.controller.generate_file"
             file_url = """/api/method/{0}?key={1}&file_name={2}""".format(method, key, doc.file_name)
         else:
             file_url = '{}/{}/{}'.format(
@@ -312,7 +328,7 @@ def upload_existing_files_cdn(name, file_name):
         )
 
         if doc.is_private:
-            method = "frappe_cdn_attachment.controller.generate_file"
+            method = "omnicommerce_cdn.controller.generate_file"
             file_url = """/api/method/{0}?key={1}""".format(method, key)
         else:
             file_url = '{}/{}/{}'.format(
@@ -334,7 +350,7 @@ def cdn_file_regex_match(file_url):
     Match the public file regex match.
     """
     return re.match(
-        r'^(https:|/api/method/frappe_cdn_attachment.controller.generate_file)',
+        r'^(https:|/api/method/omnicommerce_cdn.controller.generate_file)',
         file_url
     )
 
