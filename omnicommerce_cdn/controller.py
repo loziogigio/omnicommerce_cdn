@@ -429,21 +429,37 @@ def resize_image_square(input_path, max_size, target_file_size=500*1024):
     
     img_resized = img.resize((new_width, new_height), Image.LANCZOS)
     
-    # Create a square canvas of the specified size and paste the image into its center
-    square_image = Image.new("RGB", max_size, (255, 255, 255))  # White background
+
+    # Determine if the original image has an alpha channel (transparency)
+    has_alpha = img.mode in ('RGBA', 'LA') or (img.mode == 'P' and 'transparency' in img.info)
+
+    # Create a square canvas of the specified size and paste the image onto its center
+    if has_alpha:
+        square_image = Image.new("RGBA", max_size, (255, 255, 255, 0))  # Transparent background
+    else:
+        square_image = Image.new("RGB", max_size, (255, 255, 255))  # White background
+
     offset = ((max_size[0] - new_width) // 2, (max_size[1] - new_height) // 2)
     square_image.paste(img_resized, offset)
 
-    # Estimate quality
-    original_size = os.path.getsize(input_path)
-    estimated_quality = int((target_file_size / original_size) * 100)
-    estimated_quality = min(95, max(10, estimated_quality))  # Clamp the value between 10 and 95
+    # Get file format based on extension
+    file_format = os.path.splitext(input_path)[1].upper().replace(".", "")
+    if file_format not in ["JPEG", "JPG", "PNG", "GIF"]:
+        raise ValueError("Unsupported file format")
 
-    # Save to temporary path with the estimated quality
-    temp_path = "temp_image.jpg"
-    square_image.save(temp_path, "JPEG", quality=estimated_quality)
+    # Estimate quality for JPEG and decide compression for PNG
+    if file_format in ["JPEG", "JPG"]:
+        original_size = os.path.getsize(input_path)
+        estimated_quality = int((target_file_size / original_size) * 100)
+        estimated_quality = min(95, max(10, estimated_quality))  # Clamp the value between 10 and 95
+
+        # Save to temporary path with the estimated quality
+        temp_path = "temp_image.jpg"
+        square_image.save(temp_path, "JPEG", quality=estimated_quality)
+    elif file_format == "PNG":
+        temp_path = "temp_image.png"
+        square_image.save(temp_path, "PNG", compress_level=9)
 
     # Reopen the saved image and return
     final_img = Image.open(temp_path)
     return final_img
-
