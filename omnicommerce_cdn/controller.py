@@ -102,7 +102,7 @@ class CDNOperations(object):
             if parent_name:
                 final_key = f"{self.folder_name}/{parent_doctype}/{parent_name}/{file_name}"
             else:
-                final_key = f"{self.folder_name}/{parent_doctype}/{year}/{month}/{day}"
+                final_key = f"{self.folder_name}/{parent_doctype}/{year}/{month}/{day}/{file_name}"
         else:
             # Handle the case when parent_name is None
             if parent_name:
